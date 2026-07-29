@@ -1,0 +1,26 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  ml_api:
+    build:
+      context: .           # Build context is the current directory
+      dockerfile: Dockerfile # Specify the Dockerfile to use
+    ports:
+      - "8000:8000"        # Map container port 8000 to host port 8000
+    volumes:
+      # Mount the local models directory into the container to easily update models without rebuilding the image
+      - ./models:/app/models
+      # Mount .env.example for reference, or a .env file for actual env vars
+      - ./.env.example:/app/.env.example
+    environment:
+      # Pass environment variables to the container; these override any ENV instructions in Dockerfile
+      MODEL_PATH: "/app/models/my_classifier_model.h5"
+      LOG_LEVEL: "DEBUG"
+    healthcheck:
+      # Define a health check to ensure the service is running and responsive before processing requests
+      test: ["CMD", "python", "-c", "import urllib.request; import sys; response = urllib.request.urlopen('http://localhost:8000/health'); sys.exit(0) if response.getcode() == 200 else sys.exit(1)"]
+      interval: 10s       # Check every 10 seconds
+      timeout: 5s         # Timeout after 5 seconds
+      retries: 5          # Retry 5 times before marking as unhealthy
+    restart: on-failure # Automatically restart the container if it fails
